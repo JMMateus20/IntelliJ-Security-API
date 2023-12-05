@@ -1,6 +1,8 @@
 package com.cursos.api.springsecuritycourse.controller;
 
 import com.cursos.api.springsecuritycourse.dto.LoginDTO;
+import com.cursos.api.springsecuritycourse.dto.ResponseUsuarioDTO;
+import com.cursos.api.springsecuritycourse.entity.Usuario;
 import com.cursos.api.springsecuritycourse.service.auth.AuthenticationService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,14 @@ public class LoginController {
     public ResponseEntity<Boolean> validateToken(@RequestParam String jwt){
         boolean isTokenValid=authSevice.validateToken(jwt);
         return ResponseEntity.ok(isTokenValid);
+    }
+
+
+    @GetMapping("/profile")
+    public ResponseEntity<?> obtenerUsuarioLogeado(){
+        Usuario usuario=authSevice.findLoggedUser();
+        ResponseUsuarioDTO response=new ResponseUsuarioDTO(usuario.getId(), usuario.getNombre(), usuario.getUsername(), usuario.getRol().getNombre());
+        return ResponseEntity.ok(response);
     }
 
 

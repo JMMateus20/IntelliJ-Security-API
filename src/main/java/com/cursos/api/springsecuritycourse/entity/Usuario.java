@@ -25,7 +25,7 @@ public class Usuario implements UserDetails {
     private String password;
 
     @ManyToOne(cascade = CascadeType.ALL, optional = false)
-    @JoinColumn(name="rol_id", nullable = false, unique = true)
+    @JoinColumn(name="rol_id", nullable = false)
     private Rol rol;
 
     public Usuario(String nombre, String username, String password, Rol rol) {
