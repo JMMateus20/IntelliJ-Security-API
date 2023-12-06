@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,7 +26,7 @@ public class ProductoController {
     @Autowired
     private ProductoService productoService;
 
-
+    @PreAuthorize("hasAnyRole('admin', 'assistant')")
     @GetMapping("/page/{page}")
     public ResponseEntity<Page<ResponseProductoDTO>> findAll(@PathVariable Integer page){
         Page<ResponseProductoDTO> productoPage=productoService.findAll(PageRequest.of(page, 2));
@@ -35,12 +36,14 @@ public class ProductoController {
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAnyRole('admin', 'assistant')")
     @GetMapping("/{id}")
     public ResponseEntity<?> buscar(@PathVariable Long id){
         return productoService.buscar(id);
 
     }
 
+    @PreAuthorize("hasRole('admin')")
     @PostMapping
     public ResponseEntity<?> insertar(@Valid @RequestBody RegistroProductoDTO datos, BindingResult resultado){
         if (resultado.hasErrors()){
@@ -52,11 +55,13 @@ public class ProductoController {
         return productoService.insertar(datos);
     }
 
+    @PreAuthorize("hasRole('admin')")
     @PutMapping("/status/{id}")
     public ResponseEntity<String> cambiarEstado(@PathVariable Long id, @RequestParam(name = "status") Status status){
         return productoService.cambiarEstado(id, status);
     }
 
+    @PreAuthorize("hasAnyRole('admin', 'assistant')")
     @PutMapping("/{id}")
     public ResponseEntity<?> actualizar(@PathVariable Long id, @Valid @RequestBody RegistroProductoDTO datos, BindingResult resultado){
         if (resultado.hasErrors()){
