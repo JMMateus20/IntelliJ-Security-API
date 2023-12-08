@@ -3,6 +3,7 @@ package com.cursos.api.springsecuritycourse.service.auth;
 import com.cursos.api.springsecuritycourse.dto.JwtDTO;
 import com.cursos.api.springsecuritycourse.dto.LoginDTO;
 import com.cursos.api.springsecuritycourse.entity.Usuario;
+import com.cursos.api.springsecuritycourse.exception.NotFoundExceptionManaged;
 import com.cursos.api.springsecuritycourse.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,7 +30,12 @@ public class AuthenticationService {
 
     public JwtDTO login(LoginDTO credenciales){
         UsernamePasswordAuthenticationToken upat=new UsernamePasswordAuthenticationToken(credenciales.getUsername(), credenciales.getPassword());
-        authManager.authenticate(upat);
+        try{
+            authManager.authenticate(upat);
+        }catch(Exception e){
+            throw new NotFoundExceptionManaged("Username o password incorrectas");
+        }
+
         Usuario usuario=usuarioRep.findByUsername(credenciales.getUsername()).get();
         return new JwtDTO(jwtService.generarToken(usuario, generarExtraClaims(usuario)));
     }

@@ -7,6 +7,7 @@ import com.cursos.api.springsecuritycourse.service.auth.AuthenticationService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,7 @@ public class LoginController {
     private AuthenticationService authSevice;
 
 
+    @PreAuthorize("permitAll()")
     @PostMapping
     public ResponseEntity<?> login(@Valid @RequestBody LoginDTO credenciales, BindingResult result){
         if (result.hasErrors()){
@@ -31,13 +33,14 @@ public class LoginController {
 
     }
 
+    @PreAuthorize("permitAll()")
     @GetMapping
     public ResponseEntity<Boolean> validateToken(@RequestParam String jwt){
         boolean isTokenValid=authSevice.validateToken(jwt);
         return ResponseEntity.ok(isTokenValid);
     }
 
-
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/profile")
     public ResponseEntity<?> obtenerUsuarioLogeado(){
         Usuario usuario=authSevice.findLoggedUser();

@@ -5,6 +5,7 @@ import com.cursos.api.springsecuritycourse.service.UsuarioService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,7 +19,7 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
-
+    @PreAuthorize("permitAll()")
     @PostMapping("/registro")
     public ResponseEntity<?> insertar(@Valid @RequestBody RegistroUsuarioDTO datos, BindingResult resultado){
         if (resultado.hasErrors()){
