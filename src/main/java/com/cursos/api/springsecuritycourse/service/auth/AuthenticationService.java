@@ -5,8 +5,11 @@ import com.cursos.api.springsecuritycourse.dto.SaveUser;
 import com.cursos.api.springsecuritycourse.dto.auth.AuthenticationRequest;
 import com.cursos.api.springsecuritycourse.dto.auth.AuthenticationResponse;
 import com.cursos.api.springsecuritycourse.exception.ObjectNotFoundException;
+import com.cursos.api.springsecuritycourse.persistence.entity.Security.JwtToken;
 import com.cursos.api.springsecuritycourse.persistence.entity.Security.User;
+import com.cursos.api.springsecuritycourse.persistence.repository.JwtTokenRepository;
 import com.cursos.api.springsecuritycourse.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -14,9 +17,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class AuthenticationService {
@@ -29,6 +34,9 @@ public class AuthenticationService {
 
     @Autowired
     private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtTokenRepository jwtTokenRep;
 
     public RegisteredUser registerOneCustomer(SaveUser newUser) {
         User user = userService.registrOneCustomer(newUser);
@@ -62,8 +70,10 @@ public class AuthenticationService {
 
         authenticationManager.authenticate(authentication);
 
-        UserDetails user = userService.findOneByUsername(autRequest.getUsername()).get();
-        String jwt = jwtService.generateToken(user, generateExtraClaims((User) user));
+        User user = userService.findOneByUsername(autRequest.getUsername()).get();
+        String jwt = jwtService.generateToken(user, generateExtraClaims(user));
+
+        saveUserToken(user, jwt);
 
         AuthenticationResponse authRsp = new AuthenticationResponse();
         authRsp.setJwt(jwt);
@@ -90,5 +100,24 @@ public class AuthenticationService {
         String username = (String) auth.getPrincipal();
         return userService.findOneByUsername(username)
                 .orElseThrow(() -> new ObjectNotFoundException("User not found. Username: " + username));
+    }
+
+    public void logout(HttpServletRequest request) {
+        String jwt=jwtService.extractTokenFromRequest(request);
+        if (jwt==null || !StringUtils.hasText(jwt)){
+            return;
+        }
+        Optional<JwtToken> token=jwtTokenRep.findByToken(jwt);
+        if (token.isPresent() && token.get().isValid()){
+            JwtToken tokenBD=token.get();
+            tokenBD.setValid(false);
+            jwtTokenRep.save(tokenBD);
+        }
+    }
+
+
+    private void saveUserToken(User user, String jwt){
+        JwtToken tokenNew=new JwtToken(jwt, jwtService.extractExpiration(jwt), true, user);
+        jwtTokenRep.save(tokenNew);
     }
 }
