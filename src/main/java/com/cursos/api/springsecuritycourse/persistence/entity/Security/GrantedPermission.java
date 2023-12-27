@@ -47,4 +47,6 @@ public class GrantedPermission {
     public void setOperation(Operation operation) {
         this.operation = operation;
     }
+
+
 }

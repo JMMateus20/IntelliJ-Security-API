@@ -14,5 +14,7 @@ public interface AuthoritiesRepository extends JpaRepository<GrantedPermission, 
     @Query("SELECT new com.cursos.api.springsecuritycourse.dto.AuthoritiesResponse(G.role.name, G.operation.name) FROM GrantedPermission AS G WHERE G.role=:role")
     List<AuthoritiesResponse> encontrarPorRol(@Param("role") Role role);
 
+    
+
 
 }

@@ -7,4 +7,5 @@ public interface AuthroritiesService {
 
 
     ResponseEntity<?> listarPorRol(Long idRole);
+
 }
