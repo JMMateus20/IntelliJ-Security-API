@@ -3,6 +3,7 @@ package com.cursos.api.springsecuritycourse.config.security;
 import com.cursos.api.springsecuritycourse.persistence.util.RoleEnum;
 import com.cursos.api.springsecuritycourse.config.security.filter.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -14,6 +15,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jwt.JwtDecoders;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -29,7 +33,7 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 //@EnableMethodSecurity(prePostEnabled = true)
-public class HttpSecurityConfig {
+public class ResourceServerHttpSecurityConfig {
 
     @Autowired
     private AuthenticationProvider daoAuthProvider;
@@ -46,6 +50,9 @@ public class HttpSecurityConfig {
     @Autowired
     private AuthorizationManager<RequestAuthorizationContext> authorizationManager;
 
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+    private String issuerUri;
+
 
     //users: lmarquez - clave123, fperez - clave456, mhernandez - clave789, JMMateus20 - clave100
     @Bean
@@ -54,15 +61,24 @@ public class HttpSecurityConfig {
         SecurityFilterChain filterChain = http
                 .cors(Customizer.withDefaults())
                 .csrf( csrfConfig -> csrfConfig.disable() )
-                .sessionManagement( sessMagConfig -> sessMagConfig.sessionCreationPolicy(SessionCreationPolicy.STATELESS) )
-                .authenticationProvider(daoAuthProvider)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .sessionManagement( sessMagConfig ->
+                        sessMagConfig.sessionCreationPolicy
+                                (SessionCreationPolicy.STATELESS) )
+                //.authenticationProvider(daoAuthProvider)
+                //.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests( authReqConfig -> {
                     authReqConfig.anyRequest().access(authorizationManager);
                 } )
                 .exceptionHandling( exceptionConfig -> {
-                    exceptionConfig.authenticationEntryPoint(authenticationEntryPoint);
-                    exceptionConfig.accessDeniedHandler(accessDeniedHandler);
+                    exceptionConfig.authenticationEntryPoint
+                            (authenticationEntryPoint);
+                    exceptionConfig.accessDeniedHandler
+                            (accessDeniedHandler);
+                })
+                .oauth2ResourceServer(oauth2ResourceServerConfig->{
+                    oauth2ResourceServerConfig.jwt(jwtConfig->
+                            jwtConfig.decoder(JwtDecoders
+                                    .fromIssuerLocation(issuerUri)));
                 })
                 .build();
 
@@ -134,30 +150,20 @@ public class HttpSecurityConfig {
         authReqConfig.anyRequest().authenticated();
     }
 
-    @Profile({"local", "dev"})
     @Bean
-    CorsConfigurationSource defaultCorsConfigurationSource(){
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("https://www.google.com", "http://127.0.0.1:5500"));
-        configuration.setAllowedMethods(Arrays.asList("*"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
+    public JwtAuthenticationConverter jwtAuthenticationConverter(){
+        JwtGrantedAuthoritiesConverter jwtGAConverter=
+                new JwtGrantedAuthoritiesConverter();
+        jwtGAConverter.setAuthoritiesClaimName("permissions");
+        jwtGAConverter.setAuthorityPrefix("");
+
+        JwtAuthenticationConverter jwtAuthConverter=
+                new JwtAuthenticationConverter();
+        jwtAuthConverter.setJwtGrantedAuthoritiesConverter(jwtGAConverter);
+        return jwtAuthConverter;
+
     }
 
-    @Profile("docker")
-    @Bean
-    CorsConfigurationSource dockerCorsConfigurationSource(){
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://client"));
-        configuration.setAllowedMethods(Arrays.asList("*"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+
 
 }

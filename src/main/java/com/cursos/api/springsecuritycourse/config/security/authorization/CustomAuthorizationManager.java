@@ -13,14 +13,18 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Component
 public class CustomAuthorizationManager implements AuthorizationManager<RequestAuthorizationContext> {
@@ -51,7 +55,7 @@ public class CustomAuthorizationManager implements AuthorizationManager<RequestA
 
     private boolean isGranted(String url, String httpMethod, Authentication authentication) {
         if (authentication==null || !(authentication instanceof
-                UsernamePasswordAuthenticationToken)){ //si el authentication es nulo o no es una instancia de UsernamePasswordAuthenticationToken quiere decir que el usuario no se ha autenticado
+                JwtAuthenticationToken)){ //si el authentication es nulo o no es una instancia de UsernamePasswordAuthenticationToken quiere decir que el usuario no se ha autenticado
             throw new AuthenticationCredentialsNotFoundException("Usuario no logeado");
         }
 
@@ -74,12 +78,35 @@ public class CustomAuthorizationManager implements AuthorizationManager<RequestA
     }
 
     private List<Operation> obtainedOperations(Authentication authentication) {
-        UsernamePasswordAuthenticationToken authToken=
-                (UsernamePasswordAuthenticationToken) authentication; //del objeto authentication lo pasea
-        String username=(String) authToken.getPrincipal(); //luego se le extrae el principal que es el Username del usuario
+        JwtAuthenticationToken authToken=
+                (JwtAuthenticationToken) authentication; //del objeto authentication lo pasea
+        Jwt jwt=authToken.getToken();
+        String username=jwt.getSubject(); //luego se le extrae el principal que es el Username del usuario
         User user=userRepository.findByUsername(username).orElseThrow(
                 ()->new ObjectNotFoundException("Usuario no encontrado"));  //a partir de ese username o principal se busca al usuario en base de datos
-        return user.getRole().getOperations(); //se retorna las operaciones de su rol o sus permisos. tales como READ_ALL_PRODUCTS, ETC, ETC.
+        List<Operation> operations= user.getRole().getOperations(); //se retorna las operaciones de su rol o sus permisos. tales como READ_ALL_PRODUCTS, ETC, ETC.
+        List<String> scopes=extractScopes(jwt);
+
+        if (!scopes.contains("ALL")){
+            operations=operations.stream().filter(op->
+                    scopes.contains(op.getName()))
+                    .collect(Collectors.toList());
+
+        }
+
+        return operations;
+
+    }
+
+    private List<String> extractScopes(Jwt jwt) {
+        List<String> scopes=new ArrayList<>();
+        try{
+            scopes=(List<String>)jwt.getClaims().get("scope");
+        }catch(Exception e){
+            System.out.println("Hubo un problema al extraer los scopes del cliente");
+        }
+
+        return scopes;
 
     }
 
